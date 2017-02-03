@@ -18,8 +18,8 @@ module.exports = {
 
 		winston.debug('Starting : InfraReceiver');
     winston.debug('-------------------------------------------');
-		winston.debug('File :' + dbFile.database.infra);
-    var db = new sqlite3.Database(dbFile.database.infra);
+		winston.debug('File :' + params.database.infra);
+    var db = new sqlite3.Database(params.database.infra);
     db_initalized = true;
     winston.debug('Database initialized');
 
