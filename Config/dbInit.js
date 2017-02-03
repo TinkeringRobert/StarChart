@@ -3,7 +3,7 @@ var sqlite3 = require('sqlite3').verbose();
 
 module.exports = {
   initialize: function(dbFile){
-    winston.info('Starting : Infra DbInit');
+    winston.info('Starting : StarChart DbInit');
     winston.info('-------------------------------------------');
 		winston.info("Step 1 : Initialise database   :: " + dbFile.database.infra);
     winston.info("Step 2 : At location           :: " + __dirname);

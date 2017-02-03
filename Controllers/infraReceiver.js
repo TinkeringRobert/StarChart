@@ -14,13 +14,12 @@ var sub_modules_relation;
 module.exports = {
 	initialize: function(params)
 	{
-		const dbPath = path.resolve(__dirname, params.database.infra);
 		var client  = mqtt.connect(params.mqtt.host);
 
 		winston.debug('Starting : InfraReceiver');
     winston.debug('-------------------------------------------');
-		winston.debug('File :' + dbPath);
-		db = new sqlite3.Database(dbPath);
+		winston.debug('File :' + dbFile.database.infra);
+    var db = new sqlite3.Database(dbFile.database.infra);
     db_initalized = true;
     winston.debug('Database initialized');
 
