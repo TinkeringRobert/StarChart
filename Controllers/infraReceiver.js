@@ -16,10 +16,10 @@ module.exports = {
 	{
 		var client  = mqtt.connect(params.mqtt.host);
 
-		winston.debug('Starting : InfraReceiver');
+		winston.debug('Starting : StarChart');
     winston.debug('-------------------------------------------');
-		winston.debug('File :' + params.database.infra);
-    var db = new sqlite3.Database(params.database.infra);
+		winston.debug('File :' + params.database.starchart);
+    var db = new sqlite3.Database(params.database.starchart);
     db_initalized = true;
     winston.debug('Database initialized');
 
@@ -51,19 +51,19 @@ module.exports = {
 			// Publish itself
 			client.publish(
 				sub_module_reg,
-			  JSON.stringify({name:'infraReceiver', type:'application'})
+			  JSON.stringify({name:'StarChart', type:'application'})
 			);
 
 			// Publish relation from to channels
 			client.publish(
 				sub_modules_relation,
-				JSON.stringify({from:sub_module_reg, to:'infraReceiver'})
+				JSON.stringify({from:sub_module_reg, to:'StarChart'})
 			);
 
 			// Publish relation from to channels
 			client.publish(
 				sub_modules_relation,
-				JSON.stringify({from:sub_modules_relation, to:'infraReceiver'})
+				JSON.stringify({from:sub_modules_relation, to:'StarChart'})
 			);
 		});
 
@@ -101,7 +101,7 @@ module.exports = {
 
 	getAllModules: function(callback)
 	{
-		winston.debug('  infra getAllModules');
+		winston.debug('  starchart getAllModules');
 		if(db === null || db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');
@@ -113,7 +113,7 @@ module.exports = {
 
 	deleteModule: function(id, callback)
 	{
-		winston.debug('  infra deleteModule');
+		winston.debug('  starchart deleteModule');
 		if(db === null || db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');
@@ -125,7 +125,7 @@ module.exports = {
 
 	getAllRelations: function(callback)
 	{
-		winston.debug('  infra getAllRelations');
+		winston.debug('  starchart getAllRelations');
 		if(db === null || db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');

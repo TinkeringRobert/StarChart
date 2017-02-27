@@ -5,10 +5,10 @@ module.exports = {
   initialize: function(dbFile){
     winston.info('Starting : StarChart DbInit');
     winston.info('-------------------------------------------');
-		winston.info("Step 1 : Initialise database   :: " + dbFile.database.infra);
+		winston.info("Step 1 : Initialise database   :: " + dbFile.database.starchart);
     winston.info("Step 2 : At location           :: " + __dirname);
 
-    var db = new sqlite3.Database(dbFile.database.infra);
+    var db = new sqlite3.Database(dbFile.database.starchart);
     winston.info("Step 3 : Open database at path :: " + db);
 
     db.serialize(function(err) {
