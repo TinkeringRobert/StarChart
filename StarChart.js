@@ -11,7 +11,7 @@ else{
 }
 
 //{ error: 0, warn: 1, info: 2, verbose: 3, debug: 4, silly: 5 }
-winston.level = 'silly';
+winston.level = 'info';
 
 var app = express();
 
@@ -29,8 +29,8 @@ function initialize(){
   infraRecv.initialize(params);
   portal.initialize(params, app, infraRecv);
 
-  app.listen(params.application_port.infra, function () {
-    winston.info('StarChart active on port ' + params.application_port.infra)
+  app.listen(params.application_port.starchart, function () {
+    winston.info('StarChart active on port ' + params.application_port.starchart)
   });
 
   winston.info("Boot StartChart started");
