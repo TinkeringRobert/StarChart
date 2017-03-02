@@ -1,4 +1,3 @@
-const path = require('path');
 var mqtt = require('mqtt');
 var sqlite3 = require('sqlite3').verbose();
 var winston = require('winston');
@@ -19,9 +18,9 @@ module.exports = {
 		winston.debug('Starting : StarChart');
     winston.debug('-------------------------------------------');
 		winston.debug('File :' + params.database.starchart);
-    var db = new sqlite3.Database(params.database.starchart);
+    db = new sqlite3.Database(params.database.starchart);
     db_initalized = true;
-    winston.debug('Database initialized');
+		winston.debug('Database initialized');
 
 		client.on('connect', function () {
 
@@ -75,7 +74,9 @@ module.exports = {
 				var module = JSON.parse(message)
 				winston.debug('Received module registration : ' + module.name + ', ' + module.type);
 
+				winston.debug(db);
 				modules.update(module.name, module.type, db);
+				winston.debug('Registration passed');
 			} else if (topic == sub_modules_relation) {
 				//winston.silly(message);
 				var module = JSON.parse(message)
@@ -102,7 +103,7 @@ module.exports = {
 	getAllModules: function(callback)
 	{
 		winston.debug('  starchart getAllModules');
-		if(db === null || db_initalized === false){
+		if(/*db === null || */db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');
 		}
@@ -114,7 +115,7 @@ module.exports = {
 	deleteModule: function(id, callback)
 	{
 		winston.debug('  starchart deleteModule');
-		if(db === null || db_initalized === false){
+		if(/*db === null || */db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');
 		}
@@ -125,8 +126,8 @@ module.exports = {
 
 	getAllRelations: function(callback)
 	{
-		winston.debug('  starchart getAllRelations');
-		if(db === null || db_initalized === false){
+		winston.debug('  starchart getAllRelations from : ' + db);
+		if(/*db === null || */db_initalized === false){
 			winston.error("Database call not handled db:" + db + " init:" + (db_initalized===true ? "true" : "false"));
 			return callback('Err: Database not available');
 		}

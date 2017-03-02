@@ -11,7 +11,7 @@ else{
 }
 
 //{ error: 0, warn: 1, info: 2, verbose: 3, debug: 4, silly: 5 }
-winston.level = 'debug';
+winston.level = 'silly';
 
 var app = express();
 
