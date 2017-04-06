@@ -25,15 +25,16 @@ function initialize(){
   winston.info('Boot Infra manager Starting');
   winston.info(JSON.stringify(params,null,4));
 
-  dbInit.initialize(params);
-  infraRecv.initialize(params);
-  portal.initialize(params, app, infraRecv);
+  dbInit.initialize(params.database.starchart, 'StarChart', function(){
+    infraRecv.initialize(params);
+    portal.initialize(params, app, infraRecv);
 
-  app.listen(params.application_port.starchart, function () {
-    winston.info('StarChart active on port ' + params.application_port.starchart)
+    app.listen(params.application_port.starchart, function () {
+      winston.info('StarChart active on port ' + params.application_port.starchart)
+    });
+
+    winston.info("Boot StartChart started");
   });
-
-  winston.info("Boot StartChart started");
 };
 
 initialize();

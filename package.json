@@ -9,6 +9,7 @@
   "author": "Robert Kappert",
   "license": "MIT",
   "dependencies": {
+    "async": "^2.3.0",
     "express": "^4.14.0",
     "haikunator": "^2.0.0",
     "mqtt": "^2.1.3",
