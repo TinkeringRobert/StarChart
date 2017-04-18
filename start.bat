@@ -1,1 +1,2 @@
-nodemon StarChart.js
+call npm install
+call nodemon StarChart.js
