@@ -10,7 +10,7 @@ module.exports = {
         if (err){
           return res.status(500).send('deleteModule :: ' + err);
         }
-        return res.status(200).send({id:req.params.id});
+        return res.status(200).send({remove:result});
       });
     })
 
@@ -26,7 +26,7 @@ module.exports = {
     })
 
     app.get('/allRelations', function (req, res) {
-      winston.debug('Get basic relation information');
+      winston.debug('Get relation information');
       infraRecv.getAllRelations(function(err, result){
         if (err){
           return res.status(500).send('getAllRelations :: ' + err);

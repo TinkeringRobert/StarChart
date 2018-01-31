@@ -6,24 +6,26 @@ module.exports = {
     ];
   },
 
-  addModules: function(db, cb){
-    db.run("CREATE TABLE IF NOT EXISTS Modules " +
-          "(id        INTEGER   PRIMARY KEY   AUTOINCREMENT, " +
+  addModules: function(pool, cb){
+    pool.query("CREATE TABLE IF NOT EXISTS Modules " +
+          "(id        INTEGER   AUTO_INCREMENT, " +
           "identifier CHAR(255) NOT NULL, " +
           "name       CHAR(255) NOT NULL, " +
           "type       CHAR(255) NOT NULL, " +
           "last_seen  DATETIME, " +
-          "first_seen DATETIME) ");
+          "first_seen DATETIME," +
+          "PRIMARY KEY (id)) ");
     cb();
   },
 
-  addModuleRelations: function(db, cb){
-    db.run("CREATE TABLE IF NOT EXISTS ModulesRelations " +
-          "(id        INTEGER PRIMARY KEY   AUTOINCREMENT, " +
+  addModuleRelations: function(pool, cb){
+    pool.query("CREATE TABLE IF NOT EXISTS ModulesRelations " +
+          "(id        INTEGER AUTO_INCREMENT, " +
           "from_id    INTEGER NOT NULL, " +
           "to_id      INTEGER NOT NULL, " +
           "last_seen  DATETIME, " +
-          "first_seen DATETIME) ");
+          "first_seen DATETIME," +
+          "PRIMARY KEY (id)) ");
     cb();
   }
 }

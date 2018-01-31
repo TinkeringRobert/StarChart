@@ -1,5 +1,6 @@
 var winston = require('winston');
 var Haikunator = require('haikunator');
+var moment = require('moment');
 
 var haikunator = new Haikunator({
   adjectives: ['Andromeda','Antlia','Apus','Aquarius','Aquila','Ara','Aries','Auriga','Boötes','Caelum','Camelopardalis','Cancer','Canes_Venatici','Canis_Major','Canis_Minor','Capricornus','Carina','Cassiopeia','Centaurus','Cepheus','Cetus','Chamaeleon','Circinus','Columba','Coma_Berenices','Corona_Australis','Corona_Borealis','Corvus','Crater','Crux','Cygnus','Delphinus','Dorado','Draco','Equuleus','Eridanus','Fornax','Gemini','Grus','Hercules','Horologium','Hydra','Hydrus','Indus','Lacerta','Leo','Leo_Minor','Lepus','Libra','Lupus','Lynx','Lyra','Mensa','Microscopium','Monoceros','Musca','Norma','Octans','Ophiuchus','Orion','Pavo','Pegasus','Perseus','Phoenix','Pictor','Pisces','Piscis_Austrinus','Puppis','Pyxis','Reticulum','Sagitta','Sagittarius','Scorpius','Sculptor','Scutum','Serpens','Sextans','Taurus','Telescopium','Triangulum','Triangulum_Australe','Tucana','Ursa_Major','Ursa_Minor','Vela','Virgo','Volans','Vulpecula'],
@@ -11,138 +12,166 @@ var haikunator = new Haikunator({
 });
 
 module.exports = {
-	update: function(name, type, db)
+	update: function(name, type, pool)
 	{
     winston.silly("IM : Update module " + name + ', ' + type);
-    findModule(name, type, db, function(rows){
+    findModule(name, type, pool, function(err, rows){
       var index = rows[0].id;
       if (index === null){
         return;
       }
       if (index === -1){
-        addModule(name, type, db);
+        addModule(name, type, pool);
       }
-      updateModule(name, type, db);
+      updateModule(name, type, pool);
     });
   },
 
-	findModule: function(name, db, callback)
+	findModule: function(name, pool, callback)
 	{
 		winston.silly("IM : Find single module " + name);
-		findSingleModule(name, db, function(rows){
+		findSingleModule(name, pool, function(err, rows){
 			var index = rows[0].id;
 			if (index === null){
-				return callback(null);
+				return callback(err, null);
 			}
 			if (index === -1){
-				return callback(-1);
+				return callback(null, -1);
 			}
-			return callback(index);
+			return callback(null, index);
 		});
 	},
 
-	getAllModules: function(db, callback){
+	getAllModules: function(pool, callback){
 		winston.debug("    Get modules from database");
+    var queryStr = "SELECT id, identifier, name, type, last_seen, first_seen FROM Modules";
 
-    db.serialize(function() {
-      db.all("SELECT id, identifier, name, type, last_seen, first_seen FROM Modules", function(err, rows) {
-        if( err !== null)
-        {
-          winston.error("ERR: " + err);
-          return callback("Err: Database call failed getAllModules");
-        }
-				winston.silly(rows);
-        if (rows !== undefined && rows.length > 0)
-        {
-          callback(null, rows);
-        }
-        else {
-          callback(null, null);
-        }
-      });
+    //console.log(queryStr);
+    pool.query(queryStr, function(err, results){
+      //console.log(error);
+      //console.log(results);
+      //console.log(results.length);
+      if( err !== null )
+      {
+        winston.error('getAllModules : Err:' + err);
+        return callback(err, null);
+      }
+      // Parse result
+      if (results !== undefined && results.length > 0)
+      {
+        var qres = results;
+        callback(null, qres);
+      }
+      else
+      {
+        callback(null, null);
+      }
     });
 	},
 
-	deleteModule: function(id, db, callback){
-		winston.debug("    Delete modules from database");
+	deleteModule: function(id, pool, callback){
+		winston.debug("    Delete modules from database with id: " + id);
 
-		var query = "DELETE FROM Modules WHERE id = ?";
-		var stmt = db.prepare(query);
-		stmt.run(id, function(err) {
-			if (err)
+    var queryStr = "DELETE FROM Modules WHERE id = "+id;
+
+    //console.log(queryStr);
+    pool.query(queryStr, function(error, results){
+      //console.log(error);
+      //console.log(results.affectedRows);
+      if (error)
 			{
-				winston.error("ERR: " + err);
-				stmt.finalize();
+				winston.error("ERR: " + error);
 				return callback('Err: Database call failed deleteModule for id : ' + id);
 			}
-		});
-		stmt.finalize();
-		return callback();
+      else
+      {
+        return callback(null, results.affectedRows);
+      }
+    });
 	}
 }
 
-function findSingleModule(name, db, callback){
-  db.serialize(function() {
-    db.all("SELECT id FROM Modules WHERE name = ?", name, function(err, rows) {
-      if( err !== null )
-      {
-        winston.error('findSingleModule : ' + name + ' Err:' + err);
-        return callback(null);
-      }
-      if (rows !== undefined && rows.length > 0)
-      {
-        var index = rows;
-        callback(index);
-      }
-      else {
-        callback([{id:-1}]);
-      }
-    });
-  });
-}
+function findSingleModule(name, pool, callback){
+  var queryStr = "SELECT id FROM Modules WHERE name = '"+name+"'";
 
-function findModule(name, type, db, callback){
-  db.serialize(function() {
-    db.all("SELECT id FROM Modules WHERE name = ? AND type = ?", name, type, function(err, rows) {
-      if( err !== null )
-      {
-        winston.error('findModule : ' + name + ', ' + type + ' Err:' + err);
-        return callback(null);
-      }
-      if (rows !== undefined && rows.length > 0)
-      {
-        var index = rows;
-        callback(index);
-      }
-      else {
-        callback([{id:-1}]);
-      }
-    });
-  });
-}
-
-function addModule(name, type, db){
-  var date = new Date();
-  date.setMilliseconds(0);
-
-  var stmt = db.prepare("INSERT INTO Modules (identifier, name, type, first_seen, last_seen) VALUES (?,?,?,?,?)");
-  stmt.run(haikunator.haikunate(), name, type, date, date, function(err) {
-    if (err)
+  //console.log(queryStr);
+  pool.query(queryStr, function(error, results){
+    //console.log(error);
+    //console.log(results);
+    //console.log(results.length);
+    if( error !== null )
     {
-      winston.error('addModule : ' + name + ', ' + type + ' Err:' + err);
+      winston.error('findModule : ' + name + ', ' + type + ' Err:' + error);
+      return callback('findModule : ' + name + ', ' + type + ' Err:' + error, null);
+    }
+    // Parse result
+    if (results !== undefined && results.length > 0)
+    {
+      var index = results;
+      callback(null, index);
+    }
+    else {
+      callback(null, [{id:-1}]);
     }
   });
-  stmt.finalize();
 }
 
-function updateModule(name, type, db){
-  var date = new Date();
-  date.setMilliseconds(0);
+function findModule(name, type, pool, callback){
 
-  db.run("UPDATE Modules SET last_seen = ? WHERE name = ? AND type = ?", date, name, type, function(err) {
-    if (err)
+  var queryStr = "SELECT id FROM Modules WHERE name = '"+name+"' AND type = '"+type+"'";
+
+  //console.log(queryStr);
+  pool.query(queryStr, function(error, results){
+    //console.log(error);
+    //console.log(results);
+    //console.log(results.length);
+    if( error !== null )
     {
-      winston.error('updateModule : ' + name + ', ' + type + ' Err:' + err);
+      winston.error('findModule : ' + name + ', ' + type + ' Err:' + error);
+      return callback('findModule : ' + name + ', ' + type + ' Err:' + error, null);
+    }
+    // Parse result
+    if (results !== undefined && results.length > 0)
+    {
+      var index = results;
+      callback(null, index);
+    }
+    else {
+      callback(null, [{id:-1}]);
+    }
+  });
+}
+
+function addModule(name, type, pool){
+  var mysqlTimestamp = moment(Date.now()).format('YYYY-MM-DD HH:mm:ss');
+
+  var queryStr = "INSERT INTO Modules (identifier, name, type, first_seen, last_seen) VALUES ('"+
+    haikunator.haikunate()+"','"+
+    name+"','"+
+    type+"','"+
+    mysqlTimestamp+"','"+
+    mysqlTimestamp+"')";
+
+  //console.log(queryStr);
+  pool.query(queryStr, function(error, results){
+    //console.log(error);
+    //console.log(results);
+    if (error)
+    {
+      winston.error('addModule : ' + name + ', ' + type + ' Err:' + error);
+    }
+  });
+}
+
+function updateModule(name, type, pool){
+  var mysqlTimestamp = moment(Date.now()).format('YYYY-MM-DD HH:mm:ss');
+
+  pool.query("UPDATE Modules SET last_seen = '"+mysqlTimestamp+"' WHERE name = '"+name+"' AND type = '" + type + "'", function(error){
+    //console.log(error);
+    //console.log(results);
+    if (error)
+    {
+      winston.error('updateModule : ' + name + ', ' + type + ' Err:' + error);
     }
   });
 }

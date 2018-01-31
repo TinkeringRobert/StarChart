@@ -27,23 +27,13 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(bodyParser.json());
 
-app.get('/status', function (req, res) {
-  res.json(
-    {
-      status: 'online',
-      application: pjson.name,
-      version: pjson.version,
-      description: pjson.description
-    }
-  );
-});
-
 function initialize(){
   winston.info('Boot Infra manager Starting');
-  winston.info(JSON.stringify(params,null,4));
+  //winston.info(JSON.stringify(params,null,4));
 
-  dbInit.initialize(params.database.starchart, 'StarChart', function(){
-    infraRecv.initialize(params);
+  dbInit.initialize(params.database, 'StarChart', function(pool, err){
+    // Pool is database interface
+    infraRecv.initialize(params, pool);
     portal.initialize(params, app, infraRecv);
 
     app.listen(params.application_port.star_chart, function () {

@@ -1,118 +1,123 @@
+var key = 'real secret keys should be long and random';
+var pool = null;
+
 var winston = require('winston');
-var sqlite3 = require('sqlite3').verbose();
+var mysql = require('promise-mysql');
+var encryptor = require('simple-encryptor')(key);
 var async = require('async');
 var migrations = require('./migrations');
+var moment = require('moment');
 
 module.exports = {
-  initialize: function(dbFile, name, cb){
+  initialize: function(db, name, cb){
     winston.info('Starting : ' + name + ' DbInit');
     winston.info('-------------------------------------------');
-		winston.info("Step 1 : Initialise database   :: " + dbFile);
-    winston.info("Step 2 : At location           :: " + __dirname);
+		winston.info("Step 1 : Initialise database   :: " + db.starchart + db.database_postfix);
+    winston.info("          Credentials ");
+    winston.info(" Address : " + db.hostaddress);
+    winston.info(" Username: " + db.username);
+    winston.info(" Password: " + db.password);
+    pool = mysql.createPool(
+      {
+        host: db.hostaddress,
+        user: db.username,
+        password: encryptor.decrypt(db.password),
+        database: db.starchart + db.database_postfix,
+        connectionLimit: 4
+      }
+    );
+    winston.info("Step 3 : Open database pool conn :: ");
 
-    var db = new sqlite3.Database(dbFile);
-    winston.info("Step 3 : Open database at path :: " + db);
     var step = 4;
-    db.serialize(function(err) {
-      var migrationIndex = getCurrentMigrationIndex(db, dbFile, function(database, migrationIndex) {
-        if (migrationIndex === -1) {
-          winston.error('Error while creating the migrations');
-          return cb();
-        }
-        var migrationFunctions = migrations.getList();
 
-        if (migrationIndex !== migrationFunctions.length) {
+    var migrationIndex = getCurrentMigrationIndex(function(migrationIndex) {
+      if (migrationIndex === -1) {
+        winston.error('Error while creating the migrations');
+        return cb(null, 'Database init error');
+      }
 
-        } else {
-          winston.info('Step 4 : No migrations needed ');
-          winston.info('-------------------------------------------');
-      		return cb();
-        }
-        winston.info("Step " + step++ + " : total migrations :" + migrationFunctions.length);
-        winston.info("Step " + step++ + " : start migration at :" + migrationIndex);
-        winston.info("Step " + step++ + " : create migrations list")
-        var migArray = [];
+      var migrationFunctions = migrations.getList();
 
-        for(migrationIndex; migrationIndex < migrationFunctions.length; migrationIndex++) {
-          migArray.push(
-            {
-              func: migrationFunctions[migrationIndex].func,
-              index: (migrationIndex + 1),
-              name: migrationFunctions[migrationIndex].name
-            });
-        }
+      if (migrationIndex !== migrationFunctions.length) {
 
-        db = database;
+      } else {
+        winston.info('Step 4 : No migrations needed ');
+        winston.info('-------------------------------------------');
+    		return cb(pool);
+      }
 
-        async.eachLimit(migArray, 1, function(migration,callback){
-          winston.info("Step " + step++ + " : Run migration with index: " + migration.index + " function : " + migration.name );
-          migration.func(db, function() {
-            addMigration(db, step++, migration.index, migration.name);
+      winston.info("Step " + step++ + " : total migrations :" + migrationFunctions.length);
+      winston.info("Step " + step++ + " : start migration at :" + migrationIndex);
+      winston.info("Step " + step++ + " : create migrations list");
+
+      var migArray = [];
+
+      for(migrationIndex; migrationIndex < migrationFunctions.length; migrationIndex++) {
+        winston.info("Push index " + migrationIndex);
+        migArray.push(
+          {
+            func: migrationFunctions[migrationIndex].func,
+            index: (migrationIndex + 1),
+            name: migrationFunctions[migrationIndex].name
+          });
+      }
+
+      async.eachLimit(migArray, 1, function(migration,callback){
+        winston.info("Step " + step++ + " : Run migration with index: " + migration.index + " function : " + migration.name );
+        migration.func(pool, function() {
+          winston.info("Run migation " + migration.index + " name " + migration.name);
+          addMigration(step++, migration.index, migration.name, function()
+          {
             callback();
           });
-
-        }, function(err){
-          if (err) {
-            winston.error('Error durring database migrations :' + err);
-          }
-          winston.info("Step " + step++ + " : Database created      :: Success");
-          winston.info('-------------------------------------------');
-      		db.close();
-          return cb();
         });
+
+      }, function(err){
+        if (err) {
+          winston.error('Error durring database migrations :' + err);
+        }
+        winston.info("Step " + step++ + " : Database created      :: Success");
+        winston.info('-------------------------------------------');
+        return cb(pool);
       });
     });
   }
 }
 
-function getCurrentMigrationIndex(db, dbFile, callback){
+function getCurrentMigrationIndex(callback){
   var currentCount = 0;
-  var database = db;
-  database.all("SELECT MAX(count) as count FROM Migrations", function(err, rows) {
-    if (err !== null )
-    {
-      if ( err.errno === 1 ) {
-        var db = new sqlite3.Database(dbFile);
-        db.serialize(function(err) {
-          winston.error('create Migrations table');
-          db.run("CREATE TABLE IF NOT EXISTS Migrations " +
-                "(id        INTEGER   PRIMARY KEY   AUTOINCREMENT, " +
-                "count      INTEGER, " +
-                "timestamp  DATETIME, " +
-                "action     CHAR(40) NOT NULL) ");
-          database = db;
-        });
-      } else {
-        winston.error('retrieving Migrations : Err:' + err);
-        return callback(null, -1);
-      }
-      currentCount = addMigration(database, -1, currentCount, 'createMigrations');
-      return callback(database, currentCount);
-    }
 
-    if (rows !== undefined && rows.length === 1)
+  pool.query("SELECT MAX(count) as count FROM Migrations", function(error, results, fields){
+    if(error !== null)
     {
-      return callback(database,rows[0].count);
-    }
-    else {
-      return callback(null, -1);
+      var insertMigrations =  "CREATE TABLE IF NOT EXISTS Migrations " +
+                              "(id        INTEGER AUTO_INCREMENT, " +
+                              "count      INTEGER, " +
+                              "timestamp  DATETIME, " +
+                              "action     CHAR(40) NOT NULL, " +
+                              "PRIMARY KEY (id)) ";
+
+      winston.info("Create the migrations table");
+      pool.query(insertMigrations, function(error, results, fields)
+      {
+        addMigration(-1, currentCount, 'createMigrations', function(currentCount){
+          return callback(currentCount);
+        });
+      });
+    } else {
+      callback(results[0].count);
     }
   });
 }
 
-function addMigration(db, step, count, action){
-  winston.info("Step " + step + " : Insert into migration table migration : " + count);
-  // Prepare and add the first migration
-  var stmt = db.prepare("INSERT INTO Migrations (count, timestamp, action) VALUES (?,?,?)");
-  var date = new Date();
-  date.setMilliseconds(0);
+function addMigration(step, count, action, cb){
+  var mysqlTimestamp = moment(Date.now()).format('YYYY-MM-DD HH:mm:ss');
+  var now = moment();
 
-  stmt.run(count ,date, action, function(err) {
-    if (err)
-    {
-      winston.error('addMigration : ' + count + ', Err:' + err);
-    }
+  pool.query("INSERT INTO Migrations (count, timestamp, action) VALUES (" + count + ",'"+ mysqlTimestamp +"','"+ action +"')").then(function(result){
+    return cb(count);
+  }).catch(function(err){
+    winston.error('addMigration : ' + count + ', Err:' + err);
+    return cb(count);
   });
-  stmt.finalize();
-  return count;
 }
